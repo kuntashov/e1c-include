@@ -1,0 +1,15 @@
+method Hello(Name: String)
+    Console.Write("Hello, %Name!")
+;
+
+method Hi(Name: String)
+    Console.Write("Hi, %Name!")
+;
+
+method GoodMorning(Name: String)
+    Console.Write("Good morning, %Name!")
+;
+
+method GoodEvening(Name: String)
+    Console.Write("Good evening, %Name!")
+;

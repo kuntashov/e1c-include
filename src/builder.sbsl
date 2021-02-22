@@ -1,0 +1,146 @@
+const METHOD_NAME_START_INDEX = 6
+
+structure ScriptData
+    val Path: String
+    var Includes: Map
+    var Methods: Map
+    var Lines: Array = []
+    constructor(Path)
+;
+
+structure ScriptMethod
+    val Name: String
+    var StartLine: Number = -1
+    var EndLine: Number = -1
+    constructor(Name, StartLine)
+    constructor(Name, StartLine, EndLine)
+;
+
+structure ScriptInclude
+    val Name: String
+    val Path: String
+    var StartLine: Number = -1
+    constructor(Name, Path)
+    constructor(Name, Path, StartLine)
+;
+
+method BuildScript(Path: String): String
+
+    val ModulesCache: Map = {:}
+    val TargetPath: String = "C:\\devel\\executor-experiments\\build\\script.sbsl"
+
+    use TargetStream = (new File(TargetPath)).OpenWritableStream()
+    val Writer = new DataWriter(TargetStream)
+
+    val Script: ScriptData = LoadScript(Path)
+
+    Preprocess(Script, Writer, ModulesCache)
+
+    return TargetPath
+;
+
+method Preprocess(Script: ScriptData, Writer: DataWriter, Cache: Map, ModuleName: String = "")
+
+    var ScriptSource = Strings.Join(Script.Lines, Chars.NewLine)
+
+    Console.Write("Module Name: %ModuleName")
+
+    if not ModuleName.IsEmpty()
+        for elem in Script.Methods
+            val Method = elem.Value
+            Console.Write(Method.Name)
+            ScriptSource = ScriptSource.Replace(
+                "%{ Method.Name }(",
+                "%{ ModuleName }__%{ Method.Name}("
+            )
+        ;
+    ;
+
+    for elem in Script.Includes
+        val Include: ScriptInclude = elem.Value
+        if not Cache.ContainsKey(Include.Name)
+            val Module = LoadScript(Include.Path)
+            Preprocess(Module, Writer, Cache, Include.Name)
+            Cache[Include.Name] = True
+        ;
+        ScriptSource = ScriptSource.Replace(
+            "%{ Include.Name }.",
+            "%{ Include.Name }__"
+        )
+    ;
+
+    Writer.WriteString(Strings.Repeat("//", 40))
+    Writer.WriteString("// %{ Script.Path }")
+    Writer.WriteString(Strings.Repeat("//", 40))
+    Writer.WriteString(ScriptSource)
+;
+
+method LoadScript(Path: String): ScriptData
+
+    use Stream = (new File(Path)).OpenReadableStream()
+    val Reader = new DataReader(Stream)
+    val Script = new ScriptData(Path)
+
+    var CurLine = 0
+    while not Reader.IsReadCompleted()
+
+        var Line = Reader.ReadLine()
+        Script.Lines.Add(Line)
+
+        if IsMethod(Line)
+
+            var MethodName = GetMethodName(Line)
+            Script.Methods[CurLine] = new ScriptMethod(MethodName, CurLine)
+
+        else if IsInclude(Line)
+
+            var Module = ParseInclude(Line)
+            Module.StartLine = CurLine
+            Script.Includes[Module.Name] = Module
+
+        ;
+        CurLine += 1
+    ;
+
+    return Script
+;
+
+method ParseInclude(Line: String): ScriptInclude
+
+    Line = Line.TrimFromBegin()
+
+    var NameStart = 6 // const IncludeName =
+    var NameEnd = Line.Find("=")
+    var Name = Line.Substring(NameStart, NameEnd).Trim()
+
+    var IncludePathStart = Line.Find("\"include ") + 8
+    var IncludePathEnd = Line.FindFromEnd("\"")
+    var Path = Line.Substring(IncludePathStart, IncludePathEnd).Trim()
+
+    return new ScriptInclude(Name, Path)
+;
+
+method IsInclude(Line: String): Boolean
+    Line = Line.TrimFromBegin()
+    // const ModuleName = "include /path/to/module.sbsl"
+    var Result = Line.StartsWith("const ") and Line.Find("\"include ") > -1
+    return Result
+;
+
+method IsMethod(Line: String): Boolean
+    Line = Line.TrimFromBegin()
+    var Result = Line.StartsWith("method ") or Line.StartsWith("метод ")
+    return Result
+;
+
+method GetMethodName(Line: String): String
+    Line = Line.TrimFromBegin()
+    var ArgsStart = Line.Find("(")
+    var Name = Line.Substring(METHOD_NAME_START_INDEX, ArgsStart).Trim()
+    return Name
+;
+
+method Script()
+    var ScriptPath: String = BuildScript("C:/devel/executor-experiments/fixtures/hello.sbsl")
+    Console.Write("Script was built: %ScriptPath")
+;

@@ -1,0 +1,5 @@
+const Greetings = "include C:\\devel\\executor-experiments\\fixtures\\greetings.sbsl"
+
+method Script()
+    Greetings.Hello("1C")
+;
