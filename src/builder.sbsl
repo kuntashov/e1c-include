@@ -27,7 +27,7 @@ structure ScriptInclude
 method BuildScript(Path: String): String
 
     val ModulesCache: Map = {:}
-    val TargetPath: String = "C:\\devel\\executor-experiments\\build\\script.sbsl"
+    val TargetPath: String = "./build/script.sbsl"
 
     use TargetStream = (new File(TargetPath)).OpenWritableStream()
     val Writer = new DataWriter(TargetStream)
@@ -140,7 +140,7 @@ method GetMethodName(Line: String): String
     return Name
 ;
 
-method Script()
-    var ScriptPath: String = BuildScript("C:/devel/executor-experiments/fixtures/hello.sbsl")
-    Console.Write("Script was built: %ScriptPath")
+method Script(SrcPath: String)
+    var DstPath: String = BuildScript(SrcPath)
+    Console.Write("Script was built: %DstPath")
 ;
